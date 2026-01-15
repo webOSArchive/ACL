@@ -1,0 +1,12 @@
+{
+    "id": "com.openmobileww.acl",
+    "version": "1.2.5",
+    "vendor": "OpenMobile World Wide",
+    "type": "web",
+    "main": "index.html",
+    "title": "ACL for webOS",
+    "icon": "images/icon.png",
+    "uiRevision": "2",
+    "requiredMemory": 5,
+    "plug-ins": true
+}

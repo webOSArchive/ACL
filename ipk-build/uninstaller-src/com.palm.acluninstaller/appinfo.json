@@ -1,0 +1,11 @@
+{
+    "id": "com.palm.acluninstaller",
+    "version": "1.0.0",
+    "vendor": "OpenMobile World Wide",
+    "type": "web",
+    "main": "index.html",
+    "title": "ACL Uninstaller",
+    "icon": "images/icon.png",
+    "uiRevision": "2",
+    "noWindow": false
+}

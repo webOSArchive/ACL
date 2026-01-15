@@ -1,0 +1,64 @@
+body {
+    background-color: #333;
+    color: #fff;
+    font-family: "Prelude", sans-serif;
+}
+
+.uninstaller-container {
+    padding: 20px;
+}
+
+.header-text {
+    font-size: 28px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 20px;
+    color: #fff;
+}
+
+.status-text {
+    font-size: 18px;
+    text-align: center;
+    margin: 20px 0;
+    color: #ccc;
+}
+
+.status-detail {
+    font-size: 14px;
+    text-align: left;
+    margin: 10px 20px;
+    padding: 10px;
+    background-color: #222;
+    border-radius: 8px;
+    color: #aaa;
+}
+
+.action-button {
+    margin: 20px auto;
+    display: block;
+    min-width: 200px;
+}
+
+.success-text {
+    color: #4a4;
+}
+
+.warning-text {
+    color: #fa0;
+}
+
+.error-text {
+    color: #f44;
+}
+
+.spinner-container {
+    text-align: center;
+    margin: 30px 0;
+}
+
+.info-box {
+    background-color: #444;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px;
+}

@@ -1,0 +1,21 @@
+{
+    "role": {
+        "exeName": "/usr/palm/services/com.openmobileww.acluninstaller.service/main.js",
+        "type": "regular",
+        "allowedNames": [
+            "com.openmobileww.acluninstaller.service"
+        ]
+    },
+    "permissions": [
+        {
+            "service": "com.openmobileww.acluninstaller.service",
+            "inbound": [
+                "com.openmobileww.acluninstaller",
+                "*"
+            ],
+            "outbound": [
+                "*"
+            ]
+        }
+    ]
+}

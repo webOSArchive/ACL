@@ -1,0 +1,105 @@
+#!/bin/sh
+# ACL Uninstaller postinst
+#
+# This script runs when the uninstaller is installed (which happens
+# when the main ACL package is installed). It sets up a boot-time
+# cleanup script that removes ACL files after the user deletes the app.
+#
+# Note: The ACL startup script is patched by ACL's postinst to not start
+# if the main app is missing, so no race condition guard is needed.
+
+log() {
+    logger -t ACL-Uninstaller "$@"
+}
+
+log "ACL Uninstaller postinst starting"
+
+# Make cleanup script executable
+chmod +x /media/cryptofs/apps/usr/palm/applications/com.palm.acluninstaller/scripts/cleanup.sh 2>/dev/null
+
+log "Installing boot-time cleanup script..."
+
+mount -o remount,rw / 2>/dev/null
+
+mkdir -p /etc/event.d/finish-poststart.d
+
+cat > /etc/event.d/finish-poststart.d/099-acl-cleanup << 'CLEANUPSCRIPT'
+#!/bin/sh
+#
+# ACL Boot-time Cleanup Script
+#
+# This runs at boot and checks if cleanup is needed:
+# - Main ACL app is gone (user deleted it)
+# - But /media/omww still exists (cleanup not done yet)
+#
+# Note: The ACL startup script checks for the main app before starting,
+# so ACL won't be running when this script executes.
+#
+
+MAIN_APP=/media/cryptofs/apps/usr/palm/applications/com.openmobileww.acl
+OMWW_ROOT=/media/omww
+CLEANUP_SCRIPT=/media/cryptofs/apps/usr/palm/applications/com.palm.acluninstaller/scripts/cleanup.sh
+
+# Only run if ACL app is gone but runtime still exists
+if [ ! -d "$MAIN_APP" ] && [ -d "$OMWW_ROOT" ]; then
+    logger -t ACL-cleanup "Main ACL app removed, running cleanup..."
+
+    mount -o remount,rw /
+
+    # Run the cleanup script if it exists
+    if [ -x "$CLEANUP_SCRIPT" ]; then
+        "$CLEANUP_SCRIPT" 2>&1 | logger -t ACL-cleanup
+    else
+        # Inline cleanup if script is missing
+        logger -t ACL-cleanup "Cleanup script not found, doing inline cleanup"
+
+        # Kill any ACL processes (shouldn't be running, but just in case)
+        killall vfb-agent 2>/dev/null
+        killall vfb-client 2>/dev/null
+        sleep 1
+
+        # Unmount any lingering mounts
+        umount -l /media/omww/android/proc 2>/dev/null
+        umount -l /media/omww/android/sys 2>/dev/null
+        umount -l /media/omww/android/dev/pts 2>/dev/null
+        umount -l /media/omww/android/dev 2>/dev/null
+        umount -l /media/omww/android/data 2>/dev/null
+        umount -l /media/omww/android/system 2>/dev/null
+
+        # Remove runtime files
+        rm -rf /media/omww 2>/dev/null
+        rm -rf /media/cryptofs/omww 2>/dev/null
+
+        # Remove startup scripts
+        rm -f /etc/event.d/start-acl* 2>/dev/null
+
+        # Remove app wrappers
+        rm -rf /media/cryptofs/apps/usr/palm/applications/com.omww.* 2>/dev/null
+        rm -rf /media/cryptofs/apps/usr/palm/applications/com.acl.* 2>/dev/null
+
+        # Clean ipkg info
+        rm -f /media/cryptofs/apps/usr/lib/ipkg/info/*omww* 2>/dev/null
+        rm -f /media/cryptofs/apps/usr/lib/ipkg/info/*acl* 2>/dev/null
+    fi
+
+    # Remove this cleanup script (one-time use)
+    rm -f "$0"
+
+    mount -o remount,ro / 2>/dev/null
+
+    # Rescan apps to update launcher
+    luna-send -n 1 palm://com.palm.applicationManager/rescan '{}' 2>/dev/null &
+
+    logger -t ACL-cleanup "Cleanup complete"
+fi
+
+exit 0
+CLEANUPSCRIPT
+
+chmod 755 /etc/event.d/finish-poststart.d/099-acl-cleanup
+
+mount -o remount,ro / 2>/dev/null
+
+log "ACL Uninstaller postinst complete"
+
+exit 0

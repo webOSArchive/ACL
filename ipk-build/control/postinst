@@ -1,0 +1,74 @@
+#!/bin/sh
+#set -x
+
+INSTALL_LOG_FILE=/tmp/acl_install.txt
+PREFIX=/media/cryptofs/apps/usr/palm/applications
+
+log() {
+    echo "$@" | tee -a $INSTALL_LOG_FILE
+}
+
+if [ -f /media/omww/bin/start-acl.sh ]; then
+    log "Uninstalling the previous version of ACL."
+    /media/omww/bin/delete-acl.sh -u
+fi
+
+log "Getting ready to install ACL..."
+ACL_BIN=`ls $PREFIX/com.openmobileww.acl/bin/acl-*-webos-installer.bin`
+if [ $? -ne 0 ]; then
+    log "ERROR: ACL bin installer not found."
+    exit 1
+fi
+
+chmod 700 $ACL_BIN
+$ACL_BIN -o $INSTALL_LOG_FILE
+
+if [ $? -ne 0 ]; then
+    log "ERROR: ACL installation failed."
+    exit 1
+fi
+
+log "Congratulations, ACL is successfully installed!"
+
+# Apply offline activation patch (license servers are permanently offline)
+log "Applying offline activation patch..."
+PATCH_DIR=$PREFIX/com.openmobileww.acl/patches
+if [ -d "$PATCH_DIR" ]; then
+    # /media/omww is on root filesystem, so remount / as read-write
+    mount -o remount,rw /
+    if [ $? -ne 0 ]; then
+        log "WARNING: Could not remount / as rw, patch may fail"
+    fi
+    cp "$PATCH_DIR/vfb-agent" /media/omww/bin/vfb-agent
+    cp "$PATCH_DIR/vfb-client" /media/omww/bin/vfb-client
+    cp "$PATCH_DIR/libTurboActivate.so" /media/omww/lib/libTurboActivate.so
+    chmod +x /media/omww/bin/vfb-agent
+    chmod +x /media/omww/bin/vfb-client
+    # Remount back to read-only
+    mount -o remount,ro /
+    log "Offline activation patch applied successfully."
+else
+    log "WARNING: Patch directory not found, skipping patch."
+fi
+
+/media/omww/bin/omww-lad 1>/dev/null 2>&1 &
+
+# Install the ACL Uninstaller app (for safe removal later)
+log "Installing ACL Uninstaller utility..."
+UNINSTALLER_IPK=$PREFIX/com.openmobileww.acl/uninstaller/com.openmobileww.acluninstaller_1.0.0_all.ipk
+if [ -f "$UNINSTALLER_IPK" ]; then
+    # Install via ipkg to the user apps area
+    ipkg -o /media/cryptofs/apps install "$UNINSTALLER_IPK" 2>&1 | tee -a $INSTALL_LOG_FILE
+    if [ $? -eq 0 ]; then
+        log "ACL Uninstaller installed successfully."
+        # Rescan apps so it appears in launcher
+        luna-send -n 1 palm://com.palm.applicationManager/rescan {} 2>/dev/null &
+    else
+        log "WARNING: Could not install ACL Uninstaller. You may need to install it manually for safe removal."
+    fi
+else
+    log "WARNING: Uninstaller IPK not found at $UNINSTALLER_IPK"
+fi
+
+exit 0
+

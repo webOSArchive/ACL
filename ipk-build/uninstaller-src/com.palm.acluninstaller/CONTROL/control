@@ -1,0 +1,7 @@
+Package: com.palm.acluninstaller
+Version: 1.0.0
+Section: misc
+Priority: optional
+Architecture: all
+Maintainer: OpenMobile World Wide
+Description: ACL Uninstaller - Safely removes ACL from your device

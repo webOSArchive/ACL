@@ -1,0 +1,19 @@
+{
+    "role": {
+        "exeName": "/media/cryptofs/apps/usr/palm/applications/com.openmobileww.acluninstaller",
+        "type": "regular",
+        "allowedNames": [
+            "com.openmobileww.acluninstaller"
+        ]
+    },
+    "permissions": [
+        {
+            "service": "com.openmobileww.acluninstaller",
+            "outbound": [
+                "com.openmobileww.acluninstaller.service",
+                "com.palm.systemmanager",
+                "*"
+            ]
+        }
+    ]
+}

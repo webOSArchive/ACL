@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# ACL Pre-removal Script
+#
+# Note: This script may not run when uninstalling via the app launcher.
+# The boot-time cleanup script (installed by the uninstaller app) handles
+# cleanup regardless of whether this script runs.
+#
+
+logger -t ACL-prerm "ACL pre-removal script executed"
+
+# Nothing critical to do here - the boot cleanup script installed by the
+# uninstaller will handle cleanup on next reboot.
+
+exit 0

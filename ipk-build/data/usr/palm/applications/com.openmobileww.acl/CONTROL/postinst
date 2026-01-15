@@ -1,0 +1,126 @@
+#!/bin/sh
+#set -x
+
+INSTALL_LOG_FILE=/tmp/acl_install.txt
+PREFIX=/media/cryptofs/apps/usr/palm/applications
+
+log() {
+    echo "$@" | tee -a $INSTALL_LOG_FILE
+}
+
+# Check if ACL is already installed and patched (user may be reinstalling just to get uninstaller back)
+ACL_ALREADY_INSTALLED=0
+if [ -f /media/omww/bin/vfb-agent ] && [ -f /media/omww/lib/libTurboActivate.so ]; then
+    # Check if our patch is applied (stub library is ~7KB, real one is larger)
+    STUB_SIZE=$(ls -l /media/omww/lib/libTurboActivate.so 2>/dev/null | awk '{print $5}')
+    if [ "$STUB_SIZE" -lt 10000 ] 2>/dev/null; then
+        # Check if startup script is patched
+        if grep -q "ACL_MAIN_APP_CHECK" /etc/event.d/start-acl 2>/dev/null; then
+            ACL_ALREADY_INSTALLED=1
+            log "ACL is already installed and patched. Skipping reinstall."
+            log "Will only reinstall the Uninstaller utility."
+        fi
+    fi
+fi
+
+if [ "$ACL_ALREADY_INSTALLED" -eq 0 ]; then
+    # Full install needed
+    if [ -f /media/omww/bin/start-acl.sh ]; then
+        log "Uninstalling the previous version of ACL."
+        /media/omww/bin/delete-acl.sh -u
+    fi
+
+    log "Getting ready to install ACL..."
+    ACL_BIN=$(ls $PREFIX/com.openmobileww.acl/bin/acl-*-webos-installer.bin 2>/dev/null)
+    if [ -z "$ACL_BIN" ]; then
+        log "ERROR: ACL bin installer not found."
+        exit 1
+    fi
+
+    chmod 700 $ACL_BIN
+    $ACL_BIN -o $INSTALL_LOG_FILE
+
+    if [ $? -ne 0 ]; then
+        log "ERROR: ACL installation failed."
+        exit 1
+    fi
+
+    log "Congratulations, ACL is successfully installed!"
+
+    # Remount root as read-write for all modifications
+    mount -o remount,rw /
+    if [ $? -ne 0 ]; then
+        log "WARNING: Could not remount / as rw, some operations may fail"
+    fi
+
+    # Patch ACL startup script to check if main app exists before starting
+    # This prevents ACL from starting after the user has deleted the app
+    log "Patching startup script with safety check..."
+    for STARTUP_SCRIPT in /etc/event.d/start-acl*; do
+        if [ -f "$STARTUP_SCRIPT" ]; then
+            # Check if already patched
+            if ! grep -q "ACL_MAIN_APP_CHECK" "$STARTUP_SCRIPT" 2>/dev/null; then
+                # Create patched version with check at the beginning of the script section
+                sed -i '/^script$/a\
+    # ACL_MAIN_APP_CHECK: Do not start if main app has been removed\
+    if [ ! -d /media/cryptofs/apps/usr/palm/applications/com.openmobileww.acl ]; then\
+        logger -t ACL "Main app removed, not starting ACL"\
+        exit 0\
+    fi' "$STARTUP_SCRIPT"
+
+                log "Patched: $STARTUP_SCRIPT"
+            fi
+        fi
+    done
+
+    # Apply offline activation patch (license servers are permanently offline)
+    log "Applying offline activation patch..."
+    PATCH_DIR=$PREFIX/com.openmobileww.acl/patches
+    if [ -d "$PATCH_DIR" ]; then
+        cp "$PATCH_DIR/vfb-agent" /media/omww/bin/vfb-agent
+        cp "$PATCH_DIR/vfb-client" /media/omww/bin/vfb-client
+        cp "$PATCH_DIR/libTurboActivate.so" /media/omww/lib/libTurboActivate.so
+        chmod +x /media/omww/bin/vfb-agent
+        chmod +x /media/omww/bin/vfb-client
+        log "Offline activation patch applied successfully."
+    else
+        log "WARNING: Patch directory not found, skipping patch."
+    fi
+
+    /media/omww/bin/omww-lad 1>/dev/null 2>&1 &
+
+else
+    # ACL already installed, just need to remount for uninstaller setup
+    mount -o remount,rw /
+fi
+
+# Install the ACL Uninstaller app (for safe removal later)
+# This always runs, even if ACL was already installed
+log "Installing ACL Uninstaller utility..."
+UNINSTALLER_IPK=$PREFIX/com.openmobileww.acl/uninstaller/com.palm.acluninstaller_1.0.0_all.ipk
+if [ -f "$UNINSTALLER_IPK" ]; then
+    # Install via ipkg to the user apps area
+    ipkg -o /media/cryptofs/apps install "$UNINSTALLER_IPK" 2>&1 | tee -a $INSTALL_LOG_FILE
+    if [ $? -eq 0 ]; then
+        log "ACL Uninstaller installed successfully."
+
+        # WORKAROUND: ipkg doesn't run postinst scripts, so run it manually
+        UNINSTALLER_POSTINST=/media/cryptofs/apps/usr/lib/ipkg/info/com.palm.acluninstaller.postinst
+        if [ -f "$UNINSTALLER_POSTINST" ]; then
+            log "Running uninstaller postinst manually..."
+            sh "$UNINSTALLER_POSTINST" 2>&1 | tee -a $INSTALL_LOG_FILE
+        fi
+
+        # Rescan apps so it appears in launcher
+        luna-send -n 1 palm://com.palm.applicationManager/rescan {} 2>/dev/null &
+    else
+        log "WARNING: Could not install ACL Uninstaller. You may need to install it manually for safe removal."
+    fi
+else
+    log "WARNING: Uninstaller IPK not found at $UNINSTALLER_IPK"
+fi
+
+# Now remount root as read-only
+mount -o remount,ro /
+
+exit 0

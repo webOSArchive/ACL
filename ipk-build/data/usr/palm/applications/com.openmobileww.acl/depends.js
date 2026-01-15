@@ -1,0 +1,18 @@
+enyo.depends(
+  "source/check.js",
+  "source/home.js",
+  "source/agreement.js",
+  "source/almost_done.js",
+  "source/install.js",
+  "source/congrats.js",
+  "source/discover.js",
+  "source/explore.js",
+  "source/aclforwebos.js",
+  "source/support.js",
+  "source/appmall.js",
+  "source/about.js",
+  "source/settings.js",
+  "css/common.css",
+  "source/acl.js",
+  "source/aboutPic.js"
+);

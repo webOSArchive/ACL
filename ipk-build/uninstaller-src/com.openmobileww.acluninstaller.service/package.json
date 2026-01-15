@@ -1,0 +1,6 @@
+{
+    "name": "com.openmobileww.acluninstaller.service",
+    "version": "1.0.0",
+    "description": "ACL Uninstaller Service",
+    "main": "main.js"
+}

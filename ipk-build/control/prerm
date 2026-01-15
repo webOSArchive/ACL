@@ -1,0 +1,89 @@
+#!/bin/sh
+#
+# ACL Pre-removal Script
+#
+# This script runs when the main ACL app is being uninstalled.
+# Instead of doing complex cleanup here (which has race conditions),
+# we delegate to the ACL Uninstaller app which can handle the cleanup
+# properly, including reboots if necessary.
+#
+
+CLEANUP_FLAG=/tmp/acl-cleanup-pending
+
+log() {
+    logger -t ACL-prerm "$@"
+    echo "$@"
+}
+
+log "ACL pre-removal script started"
+
+# Set cleanup pending flag so uninstaller knows we were triggered
+echo "prerm executed at $(date)" > $CLEANUP_FLAG
+
+# Check if the uninstaller app is installed
+UNINSTALLER_APP=/media/cryptofs/apps/usr/palm/applications/com.openmobileww.acluninstaller
+if [ -d "$UNINSTALLER_APP" ]; then
+    log "Launching ACL Uninstaller to complete removal..."
+
+    # Launch the uninstaller app
+    luna-send -n 1 palm://com.palm.applicationManager/launch \
+        '{"id":"com.openmobileww.acluninstaller"}' 2>/dev/null &
+
+    log "Uninstaller launched. Please follow instructions in the uninstaller app."
+else
+    log "WARNING: ACL Uninstaller not found. Manual cleanup may be required."
+    log "ACL files may remain at /media/omww/ and /media/cryptofs/omww/"
+
+    # Try to at least set up a boot-time cleanup
+    mount -o remount,rw / 2>/dev/null
+
+    # Create a simple boot cleanup script as fallback
+    cat > /etc/event.d/finish-poststart.d/099-acl-cleanup << 'SCRIPT'
+#!/bin/sh
+# Emergency ACL cleanup - runs once at boot
+if [ -f /tmp/acl-cleanup-pending ]; then
+    logger -t ACL-cleanup "Running emergency cleanup"
+
+    # Kill ACL processes
+    pkill -9 -f 'vfb-' 2>/dev/null
+    pkill -9 -f 'omww-' 2>/dev/null
+    sleep 2
+
+    # Lazy unmount everything
+    for mnt in $(mount | grep /media/omww | awk '{print $3}' | sort -rn); do
+        umount -l "$mnt" 2>/dev/null
+    done
+
+    # Detach loop devices
+    for loop in $(losetup -a | grep omww | cut -d: -f1); do
+        losetup -d "$loop" 2>/dev/null
+    done
+
+    # Remove files
+    rm -rf /media/omww 2>/dev/null
+    rm -rf /media/cryptofs/omww 2>/dev/null
+    rm -f /etc/event.d/start-acl* 2>/dev/null
+
+    # Cleanup app wrappers
+    find /media/cryptofs/apps/usr/palm/applications -maxdepth 1 -type d -name 'com.omww.*' -exec rm -rf {} \; 2>/dev/null
+    find /media/cryptofs/apps/usr/palm/applications -maxdepth 1 -type d -name 'com.acl.*' -exec rm -rf {} \; 2>/dev/null
+
+    # Remove flag and this script
+    rm -f /tmp/acl-cleanup-pending
+    rm -f "$0"
+
+    logger -t ACL-cleanup "Emergency cleanup complete"
+    luna-send -n 1 palm://com.palm.applicationManager/rescan {} &
+fi
+exit 0
+SCRIPT
+
+    chmod 755 /etc/event.d/finish-poststart.d/099-acl-cleanup 2>/dev/null
+    mount -o remount,ro / 2>/dev/null
+
+    log "Emergency cleanup script installed. Please reboot to complete removal."
+fi
+
+# Exit successfully to allow the uninstall to proceed
+# The uninstaller app will handle the actual cleanup
+exit 0

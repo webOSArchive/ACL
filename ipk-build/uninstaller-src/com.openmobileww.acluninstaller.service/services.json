@@ -1,0 +1,22 @@
+{
+    "id": "com.openmobileww.acluninstaller.service",
+    "description": "ACL Uninstaller Service",
+    "services": [
+        {
+            "name": "com.openmobileww.acluninstaller.service",
+            "description": "ACL Uninstaller Service",
+            "commands": [
+                {
+                    "name": "checkState",
+                    "assistant": "checkState",
+                    "public": true
+                },
+                {
+                    "name": "runCleanup",
+                    "assistant": "runCleanup",
+                    "public": true
+                }
+            ]
+        }
+    ]
+}

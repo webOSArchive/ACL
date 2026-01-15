@@ -1,0 +1,19 @@
+#!/bin/sh
+# ACL Uninstaller prerm - cleanup service files
+
+# Remove service directory
+rm -rf /media/cryptofs/apps/usr/palm/services/com.openmobileww.acluninstaller.service 2>/dev/null
+
+# Remove role files
+rm -f /var/palm/ls2/roles/prv/com.openmobileww.acluninstaller*.json 2>/dev/null
+rm -f /var/palm/ls2/roles/pub/com.openmobileww.acluninstaller*.json 2>/dev/null
+
+# Remove any cleanup flag
+rm -f /tmp/acl-cleanup-pending 2>/dev/null
+
+# Remove any boot-time cleanup script we may have created
+mount -o remount,rw / 2>/dev/null
+rm -f /etc/event.d/finish-poststart.d/099-acl-cleanup 2>/dev/null
+mount -o remount,ro / 2>/dev/null
+
+exit 0

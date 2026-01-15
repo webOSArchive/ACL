@@ -1,0 +1,9 @@
+Package: com.openmobileww.acl
+Version: 1.2.5
+Architecture: armv7
+Maintainer: OpenMobile World Wide <support@openmobileww.com>
+Section: System Utilities
+Priority: optional
+Description: ACL installer for webOS Touchpad
+Depends:
+Source: {"Feed":"OpenMobile World Wide", "Type":"Application", "Category":"System Utilities", "LastUpdated":"25012014", "FullDescription":"This is OpenMobile's ACL installer for enabling Android applications on HP webOS Touchpad", "Homepage":"http://www.openmobileww.com", "Icon":"http://www.openmobileww.com/acl-for-webos/icon.png", "Screenshots":[ ], "License":"Closed Source", "MinWebOSVersion":"3.0.5", "DeviceCompatibility":["TouchPad"] }

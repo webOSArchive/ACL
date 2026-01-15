@@ -1,0 +1,16 @@
+# Intermediate build artifacts
+ipk-build/rebuild/
+ipk-build/uninstaller-rebuild/
+ipk-build/data-fix/
+
+# Temp files
+*.log
+*~
+.DS_Store
+
+# Old/intermediate IPK versions (keep final 1.2.5 and reference 1.2.0.3)
+com.openmobileww.acl_1.2.4_all.ipk
+com.openmobileww.acl_1.2.5_all.ipk
+
+# Extracted reference (can be re-extracted)
+com.openmobileww.acl_1.2.0.3_armv7/
